@@ -158,6 +158,41 @@ Durante o desenvolvimento do **LibrasJá**, foi possível praticar:
 
 ---
 
+SPRINT 2 
+## Stack
+- .NET 9 minimal APIs
+- EF Core (Oracle)
+- Swagger
+
+## Entidades
+- User
+- InterpreterProfile
+
+## Endpoints
+
+### Users
+- GET /api/users
+- GET /api/users/{id}
+- POST /api/users
+- PUT /api/users/{id}
+- DELETE /api/users/{id}
+
+### Interpreters
+- GET /api/interpreters
+- GET /api/interpreters/{id}
+- POST /api/interpreters
+- PUT /api/interpreters/{id}
+- DELETE /api/interpreters/{id}
+
+## Observações
+- Repositórios concretos em `LibrasJa.Infrastructure.Repositories`
+- Mapeamento do EF em `LibrasJa.Infrastructure.Data.AppDbContext`
+- Tratamento de erro global no Program.cs
+
+
+
+
+
  Grupo
 
 Ivanildo Alfredo da Silva Filho - RM560049

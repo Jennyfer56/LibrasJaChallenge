@@ -158,15 +158,15 @@ Durante o desenvolvimento do **LibrasJá**, foi possível praticar:
 
 ---
 
-SPRINT 2 
-## Stack
-- .NET 9 minimal APIs
-- EF Core (Oracle)
-- Swagger
+# LibrasJá - Sprint 2 (.NET)
 
-## Entidades
-- User
-- InterpreterProfile
+API feita em .NET 9 com Minimal API.
+
+## Tecnologias
+- ASP.NET Core Minimal API
+- Entity Framework Core
+- Oracle (FIAP)
+- Swagger
 
 ## Endpoints
 
@@ -176,6 +176,7 @@ SPRINT 2
 - POST /api/users
 - PUT /api/users/{id}
 - DELETE /api/users/{id}
+- GET /api/users/search?search=&page=1&pageSize=10&orderBy=nome&orderDir=asc
 
 ### Interpreters
 - GET /api/interpreters
@@ -184,13 +185,9 @@ SPRINT 2
 - PUT /api/interpreters/{id}
 - DELETE /api/interpreters/{id}
 
-## Observações
-- Repositórios concretos em `LibrasJa.Infrastructure.Repositories`
-- Mapeamento do EF em `LibrasJa.Infrastructure.Data.AppDbContext`
-- Tratamento de erro global no Program.cs
-
-
-
+## Banco de dados
+- Migrations geradas com `Add-Migration Sprint2_Init`
+- Atualização com `Update-Database`
 
 
  Grupo

@@ -1,4 +1,4 @@
-﻿namespace LibrasJaChallenge.DTOs
+﻿namespace LibrasJáChallenge.DTOs
 {
     public class UpdateInterpreterDto
     {

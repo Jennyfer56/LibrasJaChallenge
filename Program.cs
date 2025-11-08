@@ -1,32 +1,26 @@
 using LibrasJa.Infrastructure.Data;
 using LibrasJa.Infrastructure.Repositories;
-using LibrasJa.Domain.Entities;
-using LibrasJaChallenge.DTOs;
+using LibrasJáChallenge.DTOs;
 using Microsoft.EntityFrameworkCore;
+using LibrasJa.Domain.Entities;
+using System.Collections.Generic;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ==========================================================
-//                    CONFIGURAÇÕES
-// ==========================================================
-
-// Banco de Dados (Oracle - connection string do appsettings.json)
+// =============== DB =================
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseOracle(builder.Configuration.GetConnectionString("Oracle")));
 
-// Injeção de Dependência (Repositórios)
+// =============== DI =================
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IInterpreterProfileRepository, InterpreterProfileRepository>();
 
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ==========================================================
-//                MIDDLEWARE DE TRATAMENTO DE ERROS
-// ==========================================================
+// =============== ERRO GLOBAL =================
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
@@ -37,9 +31,7 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// ==========================================================
-//                       SWAGGER
-// ==========================================================
+// =============== SWAGGER =================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -48,9 +40,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ==========================================================
-//                       USERS
-// ==========================================================
+
+// =====================================================
+//                      USERS
+// =====================================================
 
 // GET /api/users
 app.MapGet("/api/users", async (IUserRepository repo) =>
@@ -64,7 +57,20 @@ app.MapGet("/api/users", async (IUserRepository repo) =>
 app.MapGet("/api/users/{id:int}", async (int id, IUserRepository repo) =>
 {
     var user = await repo.GetByIdAsync(id);
-    return user is null ? Results.NotFound() : Results.Ok(user);
+    if (user is null) return Results.NotFound();
+
+    var response = new
+    {
+        data = user,
+        links = new[]
+        {
+            new { rel = "self", method = "GET", href = $"/api/users/{id}" },
+            new { rel = "update", method = "PUT", href = $"/api/users/{id}" },
+            new { rel = "delete", method = "DELETE", href = $"/api/users/{id}" }
+        }
+    };
+
+    return Results.Ok(response);
 })
 .WithTags("Users");
 
@@ -78,10 +84,7 @@ app.MapPost("/api/users", async (CreateUserDto dto, IUserRepository repo) =>
         Tipo = dto.Tipo
     };
 
-    // Repositório retorna Task, então não há retorno
     await repo.AddAsync(user);
-
-    // Devolve o próprio objeto criado
     return Results.Created($"/api/users/{user.Id}", user);
 })
 .WithTags("Users");
@@ -90,8 +93,7 @@ app.MapPost("/api/users", async (CreateUserDto dto, IUserRepository repo) =>
 app.MapPut("/api/users/{id:int}", async (int id, CreateUserDto dto, IUserRepository repo) =>
 {
     var user = await repo.GetByIdAsync(id);
-    if (user is null)
-        return Results.NotFound();
+    if (user is null) return Results.NotFound();
 
     user.Nome = dto.Nome;
     user.Email = dto.Email;
@@ -106,17 +108,62 @@ app.MapPut("/api/users/{id:int}", async (int id, CreateUserDto dto, IUserReposit
 app.MapDelete("/api/users/{id:int}", async (int id, IUserRepository repo) =>
 {
     var user = await repo.GetByIdAsync(id);
-    if (user is null)
-        return Results.NotFound();
+    if (user is null) return Results.NotFound();
 
+    // seu repo espera User, não int
     await repo.DeleteAsync(user);
     return Results.NoContent();
 })
 .WithTags("Users");
 
-// ==========================================================
+// SEARCH /api/users/search
+app.MapGet("/api/users/search", async ([AsParameters] SearchParams qp, IUserRepository repo) =>
+{
+    // tipar explicitamente resolve o CS8917
+    List<User> users = (await repo.GetAllAsync()).ToList();
+
+    // filtro
+    if (!string.IsNullOrWhiteSpace(qp.Search))
+    {
+        users = users
+            .Where(u =>
+                u.Nome.Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
+                u.Email.Contains(qp.Search, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    // ordenação
+    users = qp.OrderBy?.ToLower() switch
+    {
+        "email" => (qp.OrderDir == "desc"
+            ? users.OrderByDescending(u => u.Email)
+            : users.OrderBy(u => u.Email)).ToList(),
+        _ => (qp.OrderDir == "desc"
+            ? users.OrderByDescending(u => u.Nome)
+            : users.OrderBy(u => u.Nome)).ToList()
+    };
+
+    var total = users.Count;
+
+    var items = users
+        .Skip((qp.Page - 1) * qp.PageSize)
+        .Take(qp.PageSize)
+        .ToList();
+
+    return Results.Ok(new
+    {
+        total,
+        page = qp.Page,
+        pageSize = qp.PageSize,
+        data = items
+    });
+})
+.WithTags("Users");
+
+
+// =====================================================
 //                  INTERPRETERS
-// ==========================================================
+// =====================================================
 
 // GET /api/interpreters
 app.MapGet("/api/interpreters", async (IInterpreterProfileRepository repo) =>
@@ -130,7 +177,20 @@ app.MapGet("/api/interpreters", async (IInterpreterProfileRepository repo) =>
 app.MapGet("/api/interpreters/{id:int}", async (int id, IInterpreterProfileRepository repo) =>
 {
     var item = await repo.GetByIdAsync(id);
-    return item is null ? Results.NotFound() : Results.Ok(item);
+    if (item is null) return Results.NotFound();
+
+    var response = new
+    {
+        data = item,
+        links = new[]
+        {
+            new { rel = "self", method = "GET", href = $"/api/interpreters/{id}" },
+            new { rel = "update", method = "PUT", href = $"/api/interpreters/{id}" },
+            new { rel = "delete", method = "DELETE", href = $"/api/interpreters/{id}" }
+        }
+    };
+
+    return Results.Ok(response);
 })
 .WithTags("Interpreters");
 
@@ -146,7 +206,6 @@ app.MapPost("/api/interpreters", async (CreateInterpreterDto dto, IInterpreterPr
     };
 
     await repo.AddAsync(entity);
-
     return Results.Created($"/api/interpreters/{entity.Id}", entity);
 })
 .WithTags("Interpreters");
@@ -155,8 +214,7 @@ app.MapPost("/api/interpreters", async (CreateInterpreterDto dto, IInterpreterPr
 app.MapPut("/api/interpreters/{id:int}", async (int id, UpdateInterpreterDto dto, IInterpreterProfileRepository repo) =>
 {
     var entity = await repo.GetByIdAsync(id);
-    if (entity is null)
-        return Results.NotFound();
+    if (entity is null) return Results.NotFound();
 
     entity.Especialidades = dto.Especialidades;
     entity.DescricaoCurta = dto.DescricaoCurta;
@@ -175,7 +233,51 @@ app.MapDelete("/api/interpreters/{id:int}", async (int id, IInterpreterProfileRe
 })
 .WithTags("Interpreters");
 
-// ==========================================================
-//                       RUN
-// ==========================================================
+// SEARCH /api/interpreters/search
+app.MapGet("/api/interpreters/search", async ([AsParameters] SearchParams qp, IInterpreterProfileRepository repo) =>
+{
+    List<InterpreterProfile> list = await repo.GetAllAsync();
+
+    if (!string.IsNullOrWhiteSpace(qp.Search))
+    {
+        list = list
+            .Where(i =>
+                (i.DescricaoCurta ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
+                (i.Especialidades ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
+                (i.User?.Nome ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    list = qp.OrderBy?.ToLower() switch
+    {
+        "user" => (qp.OrderDir == "desc"
+            ? list.OrderByDescending(i => i.User!.Nome)
+            : list.OrderBy(i => i.User!.Nome)).ToList(),
+        _ => list.OrderBy(i => i.Id).ToList()
+    };
+
+    var total = list.Count;
+
+    var items = list
+        .Skip((qp.Page - 1) * qp.PageSize)
+        .Take(qp.PageSize)
+        .ToList();
+
+    return Results.Ok(new
+    {
+        total,
+        page = qp.Page,
+        pageSize = qp.PageSize,
+        data = items
+    });
+})
+.WithTags("Interpreters");
+
 app.Run();
+
+public record SearchParams(
+    string? Search,
+    int Page = 1,
+    int PageSize = 10,
+    string? OrderBy = null,
+    string OrderDir = "asc");

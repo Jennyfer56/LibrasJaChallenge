@@ -1,11 +1,26 @@
 using LibrasJa.Infrastructure.Data;
 using LibrasJa.Infrastructure.Repositories;
+using LibrasJa.Application.Interfaces;
 using LibrasJ·Challenge.DTOs;
 using Microsoft.EntityFrameworkCore;
 using LibrasJa.Domain.Entities;
-using System.Collections.Generic;
+using Serilog;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using HealthChecks.UI.Client;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+
+// =============== SERILOG =================
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("logs/librasj·-.txt", rollingInterval: RollingInterval.Day)
+    .Enrich.FromLogContext()
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 // =============== DB =================
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -14,6 +29,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // =============== DI =================
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IInterpreterProfileRepository, InterpreterProfileRepository>();
+
+// =============== HEALTH CHECKS =================
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("oracle-db")
+    .AddCheck("api-self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("API funcionando corretamente"));
+
+// =============== OPENTELEMETRY =================
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("LibrasJa.API"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddConsoleExporter())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddConsoleExporter());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -38,242 +68,161 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// =============== HEALTH ENDPOINT =================
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
 
+app.UseHttpsRedirection();
+app.UseSerilogRequestLogging();
 
 // =====================================================
 //                      USERS
 // =====================================================
-
-// GET /api/users
-app.MapGet("/api/users", async (IUserRepository repo) =>
+app.MapGet("/api/users", async (IUserRepository repo, ILogger<Program> logger) =>
 {
-    var users = await repo.GetAllAsync();
-    return Results.Ok(users);
-})
-.WithTags("Users");
+    logger.LogInformation("Listando todos os usu·rios");
+    return Results.Ok(await repo.GetAllAsync());
+}).WithTags("Users");
 
-// GET /api/users/{id}
-app.MapGet("/api/users/{id:int}", async (int id, IUserRepository repo) =>
+app.MapGet("/api/users/{id:int}", async (int id, IUserRepository repo, ILogger<Program> logger) =>
 {
+    logger.LogInformation("Buscando usu·rio {UserId}", id);
     var user = await repo.GetByIdAsync(id);
-    if (user is null) return Results.NotFound();
-
-    var response = new
+    if (user is null)
     {
+        logger.LogWarning("Usu·rio {UserId} n„o encontrado", id);
+        return Results.NotFound();
+    }
+    return Results.Ok(new {
         data = user,
-        links = new[]
-        {
+        links = new[] {
             new { rel = "self", method = "GET", href = $"/api/users/{id}" },
             new { rel = "update", method = "PUT", href = $"/api/users/{id}" },
             new { rel = "delete", method = "DELETE", href = $"/api/users/{id}" }
         }
-    };
+    });
+}).WithTags("Users");
 
-    return Results.Ok(response);
-})
-.WithTags("Users");
-
-// POST /api/users
-app.MapPost("/api/users", async (CreateUserDto dto, IUserRepository repo) =>
+app.MapPost("/api/users", async (CreateUserDto dto, IUserRepository repo, ILogger<Program> logger) =>
 {
-    var user = new User
-    {
-        Nome = dto.Nome,
-        Email = dto.Email,
-        Tipo = dto.Tipo
-    };
-
+    logger.LogInformation("Criando usu·rio {Nome} do tipo {Tipo}", dto.Nome, dto.Tipo);
+    var user = new User { Nome = dto.Nome, Email = dto.Email, Tipo = dto.Tipo };
     await repo.AddAsync(user);
     return Results.Created($"/api/users/{user.Id}", user);
-})
-.WithTags("Users");
+}).WithTags("Users");
 
-// PUT /api/users/{id}
-app.MapPut("/api/users/{id:int}", async (int id, CreateUserDto dto, IUserRepository repo) =>
+app.MapPut("/api/users/{id:int}", async (int id, CreateUserDto dto, IUserRepository repo, ILogger<Program> logger) =>
 {
     var user = await repo.GetByIdAsync(id);
-    if (user is null) return Results.NotFound();
-
-    user.Nome = dto.Nome;
-    user.Email = dto.Email;
-    user.Tipo = dto.Tipo;
-
+    if (user is null)
+    {
+        logger.LogWarning("Tentativa de atualizar usu·rio inexistente {UserId}", id);
+        return Results.NotFound();
+    }
+    user.Nome = dto.Nome; user.Email = dto.Email; user.Tipo = dto.Tipo;
     await repo.UpdateAsync(user);
+    logger.LogInformation("Usu·rio {UserId} atualizado", id);
     return Results.NoContent();
-})
-.WithTags("Users");
+}).WithTags("Users");
 
-// DELETE /api/users/{id}
-app.MapDelete("/api/users/{id:int}", async (int id, IUserRepository repo) =>
+app.MapDelete("/api/users/{id:int}", async (int id, IUserRepository repo, ILogger<Program> logger) =>
 {
     var user = await repo.GetByIdAsync(id);
-    if (user is null) return Results.NotFound();
-
-    // seu repo espera User, n„o int
+    if (user is null)
+    {
+        logger.LogWarning("Tentativa de deletar usu·rio inexistente {UserId}", id);
+        return Results.NotFound();
+    }
     await repo.DeleteAsync(user);
+    logger.LogInformation("Usu·rio {UserId} deletado", id);
     return Results.NoContent();
-})
-.WithTags("Users");
+}).WithTags("Users");
 
-// SEARCH /api/users/search
 app.MapGet("/api/users/search", async ([AsParameters] SearchParams qp, IUserRepository repo) =>
 {
-    // tipar explicitamente resolve o CS8917
-    List<User> users = (await repo.GetAllAsync()).ToList();
-
-    // filtro
+    var users = (await repo.GetAllAsync()).ToList();
     if (!string.IsNullOrWhiteSpace(qp.Search))
-    {
-        users = users
-            .Where(u =>
-                u.Nome.Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
-                u.Email.Contains(qp.Search, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
-
-    // ordenaÁ„o
-    users = qp.OrderBy?.ToLower() switch
-    {
-        "email" => (qp.OrderDir == "desc"
-            ? users.OrderByDescending(u => u.Email)
-            : users.OrderBy(u => u.Email)).ToList(),
-        _ => (qp.OrderDir == "desc"
-            ? users.OrderByDescending(u => u.Nome)
-            : users.OrderBy(u => u.Nome)).ToList()
+        users = users.Where(u =>
+            u.Nome.Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(qp.Search, StringComparison.OrdinalIgnoreCase)).ToList();
+    users = qp.OrderBy?.ToLower() switch {
+        "email" => (qp.OrderDir == "desc" ? users.OrderByDescending(u => u.Email) : users.OrderBy(u => u.Email)).ToList(),
+        _ => (qp.OrderDir == "desc" ? users.OrderByDescending(u => u.Nome) : users.OrderBy(u => u.Nome)).ToList()
     };
-
     var total = users.Count;
-
-    var items = users
-        .Skip((qp.Page - 1) * qp.PageSize)
-        .Take(qp.PageSize)
-        .ToList();
-
-    return Results.Ok(new
-    {
-        total,
-        page = qp.Page,
-        pageSize = qp.PageSize,
-        data = items
-    });
-})
-.WithTags("Users");
-
+    var items = users.Skip((qp.Page - 1) * qp.PageSize).Take(qp.PageSize).ToList();
+    return Results.Ok(new { total, page = qp.Page, pageSize = qp.PageSize, data = items });
+}).WithTags("Users");
 
 // =====================================================
 //                  INTERPRETERS
 // =====================================================
-
-// GET /api/interpreters
 app.MapGet("/api/interpreters", async (IInterpreterProfileRepository repo) =>
-{
-    var list = await repo.GetAllAsync();
-    return Results.Ok(list);
-})
-.WithTags("Interpreters");
+    Results.Ok(await repo.GetAllAsync())).WithTags("Interpreters");
 
-// GET /api/interpreters/{id}
 app.MapGet("/api/interpreters/{id:int}", async (int id, IInterpreterProfileRepository repo) =>
 {
     var item = await repo.GetByIdAsync(id);
     if (item is null) return Results.NotFound();
-
-    var response = new
-    {
+    return Results.Ok(new {
         data = item,
-        links = new[]
-        {
+        links = new[] {
             new { rel = "self", method = "GET", href = $"/api/interpreters/{id}" },
             new { rel = "update", method = "PUT", href = $"/api/interpreters/{id}" },
             new { rel = "delete", method = "DELETE", href = $"/api/interpreters/{id}" }
         }
-    };
+    });
+}).WithTags("Interpreters");
 
-    return Results.Ok(response);
-})
-.WithTags("Interpreters");
-
-// POST /api/interpreters
 app.MapPost("/api/interpreters", async (CreateInterpreterDto dto, IInterpreterProfileRepository repo) =>
 {
-    var entity = new InterpreterProfile
-    {
-        UserId = dto.UserId,
-        Especialidades = dto.Especialidades,
-        DescricaoCurta = dto.DescricaoCurta,
-        Disponivel = dto.Disponivel
+    var entity = new InterpreterProfile {
+        UserId = dto.UserId, Especialidades = dto.Especialidades,
+        DescricaoCurta = dto.DescricaoCurta, Disponivel = dto.Disponivel
     };
-
     await repo.AddAsync(entity);
     return Results.Created($"/api/interpreters/{entity.Id}", entity);
-})
-.WithTags("Interpreters");
+}).WithTags("Interpreters");
 
-// PUT /api/interpreters/{id}
 app.MapPut("/api/interpreters/{id:int}", async (int id, UpdateInterpreterDto dto, IInterpreterProfileRepository repo) =>
 {
     var entity = await repo.GetByIdAsync(id);
     if (entity is null) return Results.NotFound();
-
     entity.Especialidades = dto.Especialidades;
     entity.DescricaoCurta = dto.DescricaoCurta;
     entity.Disponivel = dto.Disponivel;
-
     await repo.UpdateAsync(entity);
     return Results.NoContent();
-})
-.WithTags("Interpreters");
+}).WithTags("Interpreters");
 
-// DELETE /api/interpreters/{id}
 app.MapDelete("/api/interpreters/{id:int}", async (int id, IInterpreterProfileRepository repo) =>
 {
     await repo.DeleteAsync(id);
     return Results.NoContent();
-})
-.WithTags("Interpreters");
+}).WithTags("Interpreters");
 
-// SEARCH /api/interpreters/search
 app.MapGet("/api/interpreters/search", async ([AsParameters] SearchParams qp, IInterpreterProfileRepository repo) =>
 {
-    List<InterpreterProfile> list = await repo.GetAllAsync();
-
+    var list = await repo.GetAllAsync();
     if (!string.IsNullOrWhiteSpace(qp.Search))
-    {
-        list = list
-            .Where(i =>
-                (i.DescricaoCurta ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
-                (i.Especialidades ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
-                (i.User?.Nome ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
-
-    list = qp.OrderBy?.ToLower() switch
-    {
-        "user" => (qp.OrderDir == "desc"
-            ? list.OrderByDescending(i => i.User!.Nome)
-            : list.OrderBy(i => i.User!.Nome)).ToList(),
+        list = list.Where(i =>
+            (i.DescricaoCurta ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
+            (i.Especialidades ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase) ||
+            (i.User?.Nome ?? "").Contains(qp.Search, StringComparison.OrdinalIgnoreCase)).ToList();
+    list = qp.OrderBy?.ToLower() switch {
+        "user" => (qp.OrderDir == "desc" ? list.OrderByDescending(i => i.User!.Nome) : list.OrderBy(i => i.User!.Nome)).ToList(),
         _ => list.OrderBy(i => i.Id).ToList()
     };
-
     var total = list.Count;
-
-    var items = list
-        .Skip((qp.Page - 1) * qp.PageSize)
-        .Take(qp.PageSize)
-        .ToList();
-
-    return Results.Ok(new
-    {
-        total,
-        page = qp.Page,
-        pageSize = qp.PageSize,
-        data = items
-    });
-})
-.WithTags("Interpreters");
+    var items = list.Skip((qp.Page - 1) * qp.PageSize).Take(qp.PageSize).ToList();
+    return Results.Ok(new { total, page = qp.Page, pageSize = qp.PageSize, data = items });
+}).WithTags("Interpreters");
 
 app.Run();
+
+public partial class Program { }
 
 public record SearchParams(
     string? Search,

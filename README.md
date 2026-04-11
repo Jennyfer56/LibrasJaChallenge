@@ -1,202 +1,85 @@
-﻿
- LibrasJáChallenge
+# LibrasJ� Challenge � API .NET 8
 
- Objetivo do Projeto
-O **LibrasJá** é uma aplicação web desenvolvida em **.NET 8 com Oracle Database** que tem como objetivo conectar **pessoas surdas** a **intérpretes de Libras** de forma simples e direta.
+Plataforma que conecta pessoas surdas a int�rpretes de Libras.
 
-A plataforma permite o cadastro e gerenciamento de usuários (surdo ou intérprete) e a busca por intérpretes com filtros de **especialidade** e **disponibilidade**, promovendo inclusão e acessibilidade digital.
+## Integrantes
+- Ivanildo Alfredo da Silva Filho � RM560049
+- Jennyfer Lee � RM561020
+- Let�cia Sousa Prado Silva � RM559258
 
----
+## Tecnologias
+- .NET 8 / Minimal API
+- Entity Framework Core + Oracle
+- Serilog (logging estruturado)
+- OpenTelemetry (tracing e m�tricas)
+- Health Checks
+- xUnit + Moq (testes)
+- Swagger
 
- Escopo
-O sistema oferece as seguintes funcionalidades principais:
+## Arquitetura (Clean Architecture)
+LibrasJa.Domain          ? Entidades
+LibrasJa.Application     ? Interfaces e regras de neg�cio
+LibrasJa.Infrastructure  ? DbContext, Repositories (Oracle EF Core)
+LibrasJ�Challenge        ? API Minimal + Swagger
+LibrasJa.Tests.Unit      ? Testes unit�rios (xUnit + Moq)
+LibrasJa.Tests.Integration ? Testes de integra��o (WebApplicationFactory)
 
-- Cadastro, listagem, edição e exclusão de usuários.
-- Definição de tipo de usuário (SURDO ou INTERPRETE).
-- Criação de perfis de intérprete (com especialidades, descrição e disponibilidade).
-- Busca paginada e filtrada de intérpretes.
-- Exposição da API via **Swagger**.
-- Persistência de dados no banco Oracle através do **Entity Framework Core**.
+## Endpoints
+| M�todo | Rota | Descri��o |
+|--------|------|-----------|
+| GET | /api/users | Lista usu�rios |
+| GET | /api/users/{id} | Busca usu�rio por ID |
+| POST | /api/users | Cria usu�rio |
+| PUT | /api/users/{id} | Atualiza usu�rio |
+| DELETE | /api/users/{id} | Remove usu�rio |
+| GET | /api/users/search | Busca com filtros e pagina��o |
+| GET | /api/interpreters | Lista int�rpretes |
+| GET | /api/interpreters/{id} | Busca int�rprete por ID |
+| POST | /api/interpreters | Cria perfil de int�rprete |
+| PUT | /api/interpreters/{id} | Atualiza int�rprete |
+| DELETE | /api/interpreters/{id} | Remove int�rprete |
+| GET | /api/interpreters/search | Busca int�rpretes com filtros |
+| GET | /health | Health Check da API e banco |
 
----
+## Health Check
+Acesse `/health` para verificar:
+- Status da API
+- Conectividade com o banco Oracle
 
- Arquitetura (Clean Architecture)
-
-A aplicação foi estruturada em **camadas** de forma a garantir separação de responsabilidades e um código limpo e desacoplado.
-
+Resposta de exemplo:
+```json
+{
+  "status": "Healthy",
+  "entries": {
+    "oracle-db": { "status": "Healthy" },
+    "api-self": { "status": "Healthy" }
+  }
+}
 ```
 
-LibrasJa.Domain         → Entidades e modelos de domínio
-LibrasJa.Infrastructure → Contexto de dados (EF Core + Oracle), Migrations e integração
-LibrasJa.Application    → Regras de negócio, DTOs e serviços
-LibrasJáChallenge       → Camada principal (API Minimal + Swagger)
-
-```
-
----
-
-Entidades
-
- User
-| Campo | Tipo | Descrição |
-|-------|------|------------|
-| Id | int | Identificador do usuário |
-| Nome | string | Nome completo |
-| Email | string | E-mail único |
-| Tipo | string | Tipo de usuário (`SURDO` ou `INTERPRETE`) |
-| CreatedAt | DateTime | Data de criação |
-
- InterpreterProfile
-| Campo | Tipo | Descrição |
-|-------|------|------------|
-| Id | int | Identificador do perfil |
-| UserId | int | Relacionamento com User |
-| Especialidades | string | Áreas de atuação do intérprete |
-| DescricaoCurta | string | Resumo sobre o intérprete |
-| Disponivel | string | Dias disponíveis para atendimento |
-
-Relação **1:1** → Cada intérprete tem um único perfil vinculado a um `User`.
-
----
-
- Endpoints da API
-
-| Método | Endpoint | Descrição |
-|--------|-----------|------------|
-| `GET` | `/api/users` | Lista usuários (com filtros e paginação) |
-| `GET` | `/api/users/{id}` | Retorna um usuário específico |
-| `POST` | `/api/users` | Cria um novo usuário |
-| `PUT` | `/api/users/{id}` | Atualiza um usuário existente |
-| `DELETE` | `/api/users/{id}` | Exclui um usuário |
-| `GET` | `/api/interpreters/search` | Busca intérpretes por especialidade e dia disponível |
-
----
-
- Paginação e Filtros
-
-A API utiliza paginação padrão:
-```
-
-?page=1&pageSize=10
-
-```
-
-E filtros opcionais:
-```
-
-/api/users?search=maria&tipo=INTERPRETE
-/api/interpreters/search?especialidade=MEDICA&dia=SEGUNDA
-
-````
-
----
-
- Como Executar o Projeto
-
- 1. Clonar o repositório
+## Como executar
 ```bash
 git clone https://github.com/Jennyfer56/LibrasJaChallenge.git
 cd LibrasJaChallenge
-````
- 2. Restaurar dependências
-
-```bash
 dotnet restore
-```
-
- 3. Aplicar as migrations (criar o banco)
-
-```bash
-dotnet ef database update
-```
-
- 4. Executar a aplicação
-
-```bash
 dotnet run
 ```
+Acesse: https://localhost:7178/swagger
 
-Após iniciar, acesse no navegador:
+## Executar Testes
+```bash
+# Testes unit�rios
+cd LibrasJa.Tests.Unit
+dotnet test
 
+# Testes de integra��o
+cd LibrasJa.Tests.Integration
+dotnet test
 ```
-https://localhost:7178/swagger
-```
 
----
-
- Tecnologias Utilizadas
-
-* **.NET 8**
-* **Entity Framework Core (Oracle)**
-* **Swagger UI**
-* **LINQ + Minimal API**
-* **C#**
-* **Clean Architecture**
-
----
-
- Prints do Projeto (Swagger)
-
-
-* ✅ POST /api/users → cadastro realizado com sucesso (HTTP 201)
-* ✅ GET /api/users → listagem paginada
-* ✅ PUT /api/users/{id} → atualização confirmada
-* ✅ DELETE /api/users/{id} → exclusão OK
-* ✅ GET /api/interpreters/search → retorno filtrado
-
----
-
- Aprendizados
-
-Durante o desenvolvimento do **LibrasJá**, foi possível praticar:
-
-* Criação de APIs REST com **.NET 8 Minimal API**
-* Mapeamento ORM com **Entity Framework Core (Oracle)**
-* Aplicação de **padrões de arquitetura limpa (Clean Architecture)**
-* Utilização de **Swagger** para documentação e testes
-* Controle de versão com **Git + GitHub**
-
----
-
-# LibrasJá - Sprint 2 (.NET)
-
-API feita em .NET 9 com Minimal API.
-
-## Tecnologias
-- ASP.NET Core Minimal API
-- Entity Framework Core
-- Oracle (FIAP)
-- Swagger
-
-## Endpoints
-
-### Users
-- GET /api/users
-- GET /api/users/{id}
-- POST /api/users
-- PUT /api/users/{id}
-- DELETE /api/users/{id}
-- GET /api/users/search?search=&page=1&pageSize=10&orderBy=nome&orderDir=asc
-
-### Interpreters
-- GET /api/interpreters
-- GET /api/interpreters/{id}
-- POST /api/interpreters
-- PUT /api/interpreters/{id}
-- DELETE /api/interpreters/{id}
-
-## Banco de dados
-- Migrations geradas com `Add-Migration Sprint2_Init`
-- Atualização com `Update-Database`
-
-
- Grupo
-
-Ivanildo Alfredo da Silva Filho - RM560049
-Jennyfer Lee - RM561020
-Letícia Sousa Prado Silva - RM559258
-
-Curso: *Análise e Desenvolvimento de Sistemas – FIAP*
-Repositório GitHub: [https://github.com/Jennyfer56/LibrasJaChallenge](https://github.com/Jennyfer56/LibrasJaChallenge)
-
----
+## Sprint 3 � Novidades
+- Health Checks configurados (API + Oracle DB) em `/health`
+- Logging estruturado com Serilog (console + arquivo em `logs/`)
+- Distributed Tracing com OpenTelemetry (m�tricas de tempo de resposta)
+- 11 testes unit�rios (xUnit + Moq) � camadas Domain e Application
+- 5 testes de integra��o (WebApplicationFactory) � endpoints e health

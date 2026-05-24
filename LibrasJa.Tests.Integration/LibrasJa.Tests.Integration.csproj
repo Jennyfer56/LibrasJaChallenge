@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -21,7 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LibrasJaChallenge\LibrasJ&#225;Challenge.csproj" />
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LibrasJáChallenge.csproj" />
     <ProjectReference Include="..\LibrasJa.Domain\LibrasJa.Domain.csproj" />
     <ProjectReference Include="..\LibrasJa.Infrastructure\LibrasJa.Infrastructure.csproj" />
   </ItemGroup>

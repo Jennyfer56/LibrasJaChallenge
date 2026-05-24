@@ -1,0 +1,50 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 680 560" role="img" font-family="Arial, sans-serif">
+  <title>Arquitetura LibrasJa Challenge API</title>
+  <desc>Cliente HTTP autenticado via JWT acessa API .NET 8 organizada em Clean Architecture que persiste em Oracle Database e MongoDB Atlas.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="40" y="40" width="180" height="60" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+  <text x="130" y="68" text-anchor="middle" font-size="14" font-weight="500" fill="#2C2C2A">Cliente HTTP</text>
+  <text x="130" y="86" text-anchor="middle" font-size="12" fill="#5F5E5A">Swagger, APEX, curl</text>
+
+  <text x="305" y="62" text-anchor="middle" font-size="12" fill="#5F5E5A">JWT Bearer</text>
+  <line x1="220" y1="70" x2="388" y2="70" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="390" y="40" width="250" height="60" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="515" y="68" text-anchor="middle" font-size="14" font-weight="500" fill="#3C3489">Endpoints REST</text>
+  <text x="515" y="86" text-anchor="middle" font-size="12" fill="#534AB7">[Authorize] em POST/PUT/DELETE</text>
+
+  <rect x="40" y="140" width="600" height="290" rx="14" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+  <text x="60" y="168" font-size="14" font-weight="500" fill="#2C2C2A">LibrasJa Challenge API . NET 8 . Clean Architecture</text>
+
+  <rect x="70" y="184" width="540" height="52" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="90" y="206" font-size="14" font-weight="500" fill="#3C3489">Presentation . Minimal API</text>
+  <text x="90" y="224" font-size="12" fill="#534AB7">HATEOAS, Swagger, paginacao, ordenacao, filtros</text>
+
+  <rect x="70" y="246" width="540" height="52" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="90" y="268" font-size="14" font-weight="500" fill="#085041">Application</text>
+  <text x="90" y="286" font-size="12" fill="#0F6E56">Interfaces (IUserRepository, IAuditLogRepository) . DTOs</text>
+
+  <rect x="70" y="308" width="540" height="52" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+  <text x="90" y="330" font-size="14" font-weight="500" fill="#712B13">Domain</text>
+  <text x="90" y="348" font-size="12" fill="#993C1D">Entidades: User, InterpreterProfile, AuditLog</text>
+
+  <rect x="70" y="370" width="540" height="52" rx="8" fill="#FBEAF0" stroke="#993556" stroke-width="0.5"/>
+  <text x="90" y="392" font-size="14" font-weight="500" fill="#72243E">Infrastructure</text>
+  <text x="90" y="410" font-size="12" fill="#993556">EF Core (Oracle) . MongoDB.Driver . Repositories</text>
+
+  <rect x="100" y="470" width="200" height="60" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+  <text x="200" y="495" text-anchor="middle" font-size="14" font-weight="500" fill="#633806">Oracle Database</text>
+  <text x="200" y="513" text-anchor="middle" font-size="12" fill="#854F0B">Users, InterpreterProfiles</text>
+
+  <rect x="380" y="470" width="200" height="60" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+  <text x="480" y="495" text-anchor="middle" font-size="14" font-weight="500" fill="#27500A">MongoDB Atlas</text>
+  <text x="480" y="513" text-anchor="middle" font-size="12" fill="#3B6D11">Colecao audit_logs</text>
+
+  <line x1="200" y1="422" x2="200" y2="468" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="480" y1="422" x2="480" y2="468" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#arrow)"/>
+</svg>
